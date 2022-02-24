@@ -1,0 +1,4 @@
+
+namespace crc{
+    char getCRC();
+}
