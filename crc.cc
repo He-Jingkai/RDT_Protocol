@@ -5,26 +5,34 @@
 #define POLYNOMIAL 0xD8
 
 namespace crc {
-/*
- * The width of the CRC calculation and result.
- * Modify the typedef for a 16 or 32-bit CRC standard.
- */
-u_int8_t getCRC(char const message[], int nBytes) {
-  u_int8_t remainder = 0;
-  /*Perform modulo-2 division, a byte at a time.*/
-  for (int byte = 0; byte < nBytes; byte++) {
-    /* Bring the next byte into the remainder.*/
-    remainder ^= (message[byte] << (WIDTH - 8));
-    /*Perform modulo-2 division, a bit at a time.*/
-    // for (u_int8_t bit = 8; bit > 0; --bit) {
-    //   /* Try to divide the current data bit.*/
-    //   if (remainder & TOPBIT)
-    //     remainder = (remainder << 1) ^ POLYNOMIAL;
-    //   else
-    //     remainder = (remainder << 1);
-    // }
-  }
 
-  return remainder;
+u_int8_t crc4_itu(char const message[], int nBytes) {
+  u_int8_t i;
+  u_int8_t crc = 0xFF;  // Initial value
+  while (nBytes--) {
+    crc ^= *message++;  // crc ^= *data; data++;
+    for (i = 0; i < 8; ++i) {
+      if (crc & 1)
+        crc = (crc >> 1) ^ 0xE0;  // 0xE0 = reverse 0x07
+      else
+        crc = (crc >> 1);
+    }
+  }
+  return crc;
+}
+
+u_int8_t crc8_rohc(char const message[], int nBytes) {
+  u_int8_t i;
+  u_int8_t crc = 0;  // Initial value
+  while (nBytes--) {
+    crc ^= *message++;  // crc ^= *data; data++;
+    for (i = 0; i < 8; ++i) {
+      if (crc & 1)
+        crc = (crc >> 1) ^ 0x0C;  // 0x0C = (reverse 0x03)>>(8-4)
+      else
+        crc = (crc >> 1);
+    }
+  }
+  return crc;
 }
 }  // namespace crc

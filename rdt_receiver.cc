@@ -1,16 +1,6 @@
 /*
  * FILE: rdt_receiver.cc
  * DESCRIPTION: Reliable data transfer receiver.
- * NOTE: This implementation assumes there is no packet loss, corruption, or
- *       reordering.  You will need to enhance it to deal with all these
- *       situations.  In this implementation, the packet format is laid out as
- *       the following:
- *
- *       |<-  1 byte  ->|<-             the rest            ->|
- *       | payload size |<-             payload             ->|
- *
- *       The first byte of each packet indicates the size of the payload
- *       (excluding this single-byte header)
  */
 
 #include "rdt_receiver.h"
@@ -19,18 +9,31 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <map>
+
 #include "crc.h"
 #include "rdt_struct.h"
+
+extern int HEADER_SIZE;
+std::map<u_int16_t, message *> Receiver_packet_buffer;
 
 void Receiver_ToLowerLayer(struct packet *pkt);
 
 u_int16_t Receiver_nextseqnum = 1;
 
+void Receiver_ToUpperLayer_rewrite(struct message *msg) {
+  Receiver_ToUpperLayer(msg);
+  if (msg->data != NULL) free(msg->data);
+  if (msg != NULL) free(msg);
+}
 void ACK(u_int16_t seqnum) {
+#ifdef DEBUG
   fprintf(stdout, "[receiver]send ack of %d\n", seqnum);
+#endif
   struct packet *pkt = new packet;
   *(u_int16_t *)pkt->data = seqnum;
-  pkt->data[2] = crc::getCRC(pkt->data, 2);
+  pkt->data[2] = crc::crc4_itu(pkt->data, 2);
+  pkt->data[3] = crc::crc8_rohc(pkt->data, 3);
   Receiver_ToLowerLayer(pkt);
 }
 
@@ -49,42 +52,41 @@ void Receiver_Final() {
 
 /* event handler, called when a packet is passed from the lower layer at the
    receiver */
-/* Packet Structure:
-  |size(1 byte)|sequence_num(1 byte)|checksum(1 byte)
- */
 void Receiver_FromLowerLayer(struct packet *pkt) {
-  /* 1-byte header indicating the size of the payload */
-  int header_size = 4;
-
-  /* construct a message and deliver to the upper layer */
-  struct message *msg = (struct message *)malloc(sizeof(struct message));
-  ASSERT(msg != NULL);
-
-  msg->size = (u_int8_t)pkt->data[0];
-  u_int16_t sequence_num = *(u_int16_t *)(pkt->data + 1);
-  u_int8_t pkt_checksum = (u_int8_t)pkt->data[3];
-  u_int8_t caculated_checksum = crc::getCRC((pkt->data + 4), (int)pkt->data[0]);
-  fprintf(stdout,
-          "[receiver]receive packet of %d, pkt_checksum = %d, "
-          "caculated_checksum = %d\n",
-          sequence_num, pkt_checksum, caculated_checksum);
-
-  /* sanity check in case the packet is corrupted */
-  if (msg->size < 0 || msg->size > RDT_PKTSIZE - header_size ||
-      pkt_checksum != caculated_checksum ||
-      sequence_num != Receiver_nextseqnum) {
+  if (crc::crc4_itu(pkt->data, RDT_PKTSIZE) ||
+      crc::crc8_rohc(pkt->data, RDT_PKTSIZE - 1) ||
+      (u_int8_t)pkt->data[0] < 0 ||
+      (u_int8_t)pkt->data[0] > RDT_PKTSIZE - HEADER_SIZE) {
     ACK(Receiver_nextseqnum - 1);
     return;
   }
 
+  /* construct a message and deliver to the upper layer */
+  struct message *msg = (struct message *)malloc(sizeof(struct message));
+  msg->size = (u_int8_t)pkt->data[0];
+  u_int16_t sequence_num = *(u_int16_t *)(pkt->data + 1);
+#ifdef DEBUG
+  fprintf(stdout, "[receiver]receive packet of %d\n", sequence_num);
+#endif
+  if (sequence_num != Receiver_nextseqnum) {
+    ACK(Receiver_nextseqnum - 1);
+    msg->data = (char *)malloc(msg->size);
+    memcpy(msg->data, pkt->data + HEADER_SIZE, msg->size);
+    Receiver_packet_buffer[sequence_num] = msg;
+    return;
+  }
+
   msg->data = (char *)malloc(msg->size);
-  ASSERT(msg->data != NULL);
-  memcpy(msg->data, pkt->data + header_size, msg->size);
-  Receiver_ToUpperLayer(msg);
+  memcpy(msg->data, pkt->data + HEADER_SIZE, msg->size);
+  Receiver_ToUpperLayer_rewrite(msg);
+
   ACK(Receiver_nextseqnum);
   Receiver_nextseqnum++;
-
-  /* don't forget to free the space */
-  if (msg->data != NULL) free(msg->data);
-  if (msg != NULL) free(msg);
+  while (Receiver_packet_buffer.find(Receiver_nextseqnum) !=
+         Receiver_packet_buffer.end()) {
+    msg = Receiver_packet_buffer[Receiver_nextseqnum];
+    Receiver_ToUpperLayer_rewrite(msg);
+    ACK(Receiver_nextseqnum);
+    Receiver_nextseqnum++;
+  }
 }

@@ -8,6 +8,7 @@
 #ifndef _RDT_STRUCT_H_
 #define _RDT_STRUCT_H_
 
+// #define DEBUG
 /* sanity check utility */
 #define ASSERT(x) \
     if (!(x)) { \

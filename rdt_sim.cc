@@ -15,6 +15,7 @@
 #include "rdt_receiver.h"
 #include "rdt_sender.h"
 #include "rdt_struct.h"
+#include <time.h>
 
 /*[]------------------------------------------------------------------------[]
   |  generic event chain framework
@@ -386,8 +387,10 @@ int main(int argc, char *argv[]) {
           loss_rate * 100.0, corrupt_rate * 100.0, tracing_level);
   fgetc(stdin);
 
+
   /* initialize the random number generator */
-  srand(getpid() + getppid());
+  // srand(getpid() + getppid());
+  srand(time(NULL));
 
   /* test the random number generator */
   double randtest_sum = 0.0;
