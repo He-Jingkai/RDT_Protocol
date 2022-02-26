@@ -19,10 +19,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "funcs.h"
+#include "crc.h"
 #include "rdt_struct.h"
 
-u_int64_t nextseqnum = 0;
+void Receiver_ToLowerLayer(struct packet *pkt);
+
+u_int16_t Receiver_nextseqnum = 1;
+
+void ACK(u_int16_t seqnum) {
+  fprintf(stdout, "[receiver]send ack of %d\n", seqnum);
+  struct packet *pkt = new packet;
+  *(u_int16_t *)pkt->data = seqnum;
+  pkt->data[2] = crc::getCRC(pkt->data, 2);
+  Receiver_ToLowerLayer(pkt);
+}
 
 /* receiver initialization, called once at the very beginning */
 void Receiver_Init() {
@@ -37,9 +47,6 @@ void Receiver_Final() {
   fprintf(stdout, "At %.2fs: receiver finalizing ...\n", GetSimulationTime());
 }
 
-void ACK(int seqnum) {
-  
-}
 /* event handler, called when a packet is passed from the lower layer at the
    receiver */
 /* Packet Structure:
@@ -47,28 +54,35 @@ void ACK(int seqnum) {
  */
 void Receiver_FromLowerLayer(struct packet *pkt) {
   /* 1-byte header indicating the size of the payload */
-  int header_size = 3;
+  int header_size = 4;
 
   /* construct a message and deliver to the upper layer */
   struct message *msg = (struct message *)malloc(sizeof(struct message));
   ASSERT(msg != NULL);
 
-  msg->size = pkt->data[0];
-  int sequence_num = pkt->data[1];
-  int pkt_checksum = pkt->data[2];
-  int caculated_checksum = crc::getCRC();
+  msg->size = (u_int8_t)pkt->data[0];
+  u_int16_t sequence_num = *(u_int16_t *)(pkt->data + 1);
+  u_int8_t pkt_checksum = (u_int8_t)pkt->data[3];
+  u_int8_t caculated_checksum = crc::getCRC((pkt->data + 4), (int)pkt->data[0]);
+  fprintf(stdout,
+          "[receiver]receive packet of %d, pkt_checksum = %d, "
+          "caculated_checksum = %d\n",
+          sequence_num, pkt_checksum, caculated_checksum);
 
   /* sanity check in case the packet is corrupted */
   if (msg->size < 0 || msg->size > RDT_PKTSIZE - header_size ||
-      pkt_checksum != caculated_checksum || sequence_num != nextseqnum)
-    ACK(nextseqnum - 1);
+      pkt_checksum != caculated_checksum ||
+      sequence_num != Receiver_nextseqnum) {
+    ACK(Receiver_nextseqnum - 1);
+    return;
+  }
 
   msg->data = (char *)malloc(msg->size);
   ASSERT(msg->data != NULL);
   memcpy(msg->data, pkt->data + header_size, msg->size);
   Receiver_ToUpperLayer(msg);
-  nextseqnum++;
-  ACK(nextseqnum);
+  ACK(Receiver_nextseqnum);
+  Receiver_nextseqnum++;
 
   /* don't forget to free the space */
   if (msg->data != NULL) free(msg->data);
