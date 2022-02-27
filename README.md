@@ -20,7 +20,8 @@ Packet的结构如下:
 
 
 ````
-|size(u_int8_t)|sequence number(u_int16_t)|data(RDT_PKTSIZE-5)|crc_checksum-1(u_int8_t)|crc_checksum-2(u_int8_t)|  
+|   size   |sequence number|      data     |crc_checksum-1|crc_checksum-2|  
+|(u_int8_t)|  (u_int16_t)  |(RDT_PKTSIZE-5)|  (u_int8_t)  |  (u_int8_t)  |
 ````
 
 ## CRC循环检验和
