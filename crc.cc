@@ -35,4 +35,19 @@ u_int8_t crc8_rohc(char const message[], int nBytes) {
   }
   return crc;
 }
+
+u_int8_t crc6_itu(char const message[], int nBytes) {
+  u_int8_t i;
+  u_int8_t crc = 0;  // Initial value
+  while (nBytes--) {
+    crc ^= *message++;  // crc ^= *data; data++;
+    for (i = 0; i < 8; ++i) {
+      if (crc & 1)
+        crc = (crc >> 1) ^ 0x30;  // 0x30 = (reverse 0x03)>>(8-6)
+      else
+        crc = (crc >> 1);
+    }
+  }
+  return crc;
+}
 }  // namespace crc

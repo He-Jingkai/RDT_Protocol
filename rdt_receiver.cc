@@ -55,7 +55,7 @@ void Receiver_Final() {
 void Receiver_FromLowerLayer(struct packet *pkt) {
   if (crc::crc4_itu(pkt->data, RDT_PKTSIZE) ||
       crc::crc8_rohc(pkt->data, RDT_PKTSIZE - 1) ||
-      (u_int8_t)pkt->data[0] < 0 ||
+      crc::crc6_itu(pkt->data, RDT_PKTSIZE - 2) || (u_int8_t)pkt->data[0] < 1 ||
       (u_int8_t)pkt->data[0] > RDT_PKTSIZE - HEADER_SIZE) {
     ACK(Receiver_nextseqnum - 1);
     return;
@@ -65,10 +65,15 @@ void Receiver_FromLowerLayer(struct packet *pkt) {
   struct message *msg = (struct message *)malloc(sizeof(struct message));
   msg->size = (u_int8_t)pkt->data[0];
   u_int16_t sequence_num = *(u_int16_t *)(pkt->data + 1);
+
 #ifdef DEBUG
   fprintf(stdout, "[receiver]receive packet of %d\n", sequence_num);
 #endif
-  if (sequence_num != Receiver_nextseqnum) {
+  if (sequence_num < Receiver_nextseqnum) {
+    ACK(Receiver_nextseqnum - 1);
+    return;
+  }
+  if (sequence_num > Receiver_nextseqnum) {
     ACK(Receiver_nextseqnum - 1);
     msg->data = (char *)malloc(msg->size);
     memcpy(msg->data, pkt->data + HEADER_SIZE, msg->size);

@@ -16,6 +16,7 @@
 #include "rdt_struct.h"
 
 #define WINDOW_SIZE 5
+#define CHECKSUM_SIZE 3
 #define TIMEOUT 0.3
 int HEADER_SIZE = 3;
 u_int16_t Sender_nextseqnum = 1;
@@ -38,17 +39,20 @@ void Sender_moveWindow() {
   }
 }
 
-/* change @send_base and delete packets before @sequenceNum(included) */
-bool Sender_ACKPacket(int sequenceNum) {
-  u_int16_t old_send_base = send_base;
-  send_base = sequenceNum + 1;
+void addChecksum(packet *pkt) {
+  (pkt->data)[RDT_PKTSIZE - 3] = crc::crc6_itu(pkt->data, RDT_PKTSIZE - 3);
+  (pkt->data)[RDT_PKTSIZE - 2] = crc::crc8_rohc(pkt->data, RDT_PKTSIZE - 2);
+  (pkt->data)[RDT_PKTSIZE - 1] = crc::crc4_itu(pkt->data, RDT_PKTSIZE - 1);
+}
 
+/* change @send_base and delete packets before @sequenceNum(included) */
+void Sender_ACKPacket(int sequenceNum) {
+  send_base = sequenceNum + 1;
   // for (int i = 0; i <= sequenceNum; i++)
   //   if (packet_buffer.find(i) != packet_buffer.end()) {
   //     delete packet_buffer[i];
   //     packet_buffer.erase(i);
   //   }
-  return old_send_base != send_base;
 }
 
 /* sender initialization, called once at the very beginning */
@@ -68,7 +72,7 @@ void Sender_Final() {
    sender */
 void Sender_FromUpperLayer(struct message *msg) {
   /* maximum payload size */
-  u_int8_t maxpayload_size = RDT_PKTSIZE - HEADER_SIZE - 2;
+  u_int8_t maxpayload_size = RDT_PKTSIZE - HEADER_SIZE - CHECKSUM_SIZE;
 
   /* the cursor always points to the first unsent byte in the message */
   int cursor = 0;
@@ -78,9 +82,7 @@ void Sender_FromUpperLayer(struct message *msg) {
     (pkt->data)[0] = maxpayload_size;
     *(u_int16_t *)(pkt->data + 1) = sequence_num;
     memcpy(pkt->data + HEADER_SIZE, msg->data + cursor, maxpayload_size);
-
-    (pkt->data)[RDT_PKTSIZE - 2] = crc::crc8_rohc(pkt->data, RDT_PKTSIZE - 2);
-    (pkt->data)[RDT_PKTSIZE - 1] = crc::crc4_itu(pkt->data, RDT_PKTSIZE - 1);
+    addChecksum(pkt);
     packet_buffer[sequence_num] = pkt;
     cursor += maxpayload_size;
     total_packet_num++;
@@ -92,17 +94,14 @@ void Sender_FromUpperLayer(struct message *msg) {
     pkt->data[0] = msg->size - cursor;
     *(u_int16_t *)(pkt->data + 1) = sequence_num;
     memcpy(pkt->data + HEADER_SIZE, msg->data + cursor, pkt->data[0]);
-
-    (pkt->data)[RDT_PKTSIZE - 2] = crc::crc8_rohc(pkt->data, RDT_PKTSIZE - 2);
-    (pkt->data)[RDT_PKTSIZE - 1] = crc::crc4_itu(pkt->data, RDT_PKTSIZE - 1);
+    addChecksum(pkt);
     packet_buffer[sequence_num] = pkt;
     total_packet_num++;
   }
 #ifdef DEBUG
   fprintf(stdout, "[sender]total packets num %d\n", total_packet_num);
 #endif
-  if (total_packet_num != packet_buffer.size()) exit(0);
-
+  Sender_StartTimer(TIMEOUT);
   Sender_moveWindow();
 }
 
