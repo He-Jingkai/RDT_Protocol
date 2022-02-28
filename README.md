@@ -25,8 +25,8 @@ Packet的结构如下:
 
 
 ````
-|   size   |sequence number|      data     |crc_checksum-1|crc_checksum-2|crc_checksum-3|  
-|(u_int8_t)|  (u_int16_t)  |(RDT_PKTSIZE-5)|  (u_int8_t)  |  (u_int8_t)  |  (u_int8_t)  |
+|  size  |sequence num|     data    |crc_checksum-1|crc_checksum-2|crc_checksum-3|  
+|u_int8_t| u_int16_t  |RDT_PKTSIZE-5|   u_int8_t   |   u_int8_t   |   u_int8_t   |
 ````
 
 ## CRC循环检验和
