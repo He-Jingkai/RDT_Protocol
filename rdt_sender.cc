@@ -101,8 +101,8 @@ void Sender_FromUpperLayer(struct message *msg) {
 #ifdef DEBUG
   fprintf(stdout, "[sender]total packets num %d\n", total_packet_num);
 #endif
-  Sender_StartTimer(TIMEOUT);
   Sender_moveWindow();
+  Sender_StartTimer(TIMEOUT);
 }
 
 /* event handler, called when a packet is passed from the lower layer at the

@@ -25,8 +25,8 @@ Packet的结构如下:
 
 
 ````
-|  size  |sequence num|     data    |crc_checksum-1|crc_checksum-2|crc_checksum-3|  
-|u_int8_t| u_int16_t  |RDT_PKTSIZE-5|   u_int8_t   |   u_int8_t   |   u_int8_t   |
+|  size |seq_num  |  data   | crc-1 | crc-2 | crc-3 |  
+|uint8_t|uint16_t |PKTSIZE-5|uint8_t|uint8_t|uint8_t|
 ````
 
 ## CRC循环检验和
@@ -43,7 +43,7 @@ Packet的结构如下:
 |3|1/16777216|2170|
 
 
-测试发现对于在0.15错误率下使用两个crc已经可以检出几乎所有错误的包，但是在0.3错误率下使用两个crc几乎不可能通过测试。需要注意的是，即便使用3个crc checksum仍有概率出现出错但未检出的情况，尤其是错误率较高的情况下.
+测试发现对于在0.15错误率下使用两个crc循环检验和已经可以检出几乎所有错误的包，但是在0.3错误率下使用两个crc循环检验和几乎不可能通过测试。需要注意的是，即便使用3个crc checksum仍有概率出现出错但未检出的情况，尤其是错误率较高的情况下.
 
 下面是使用的3个crc函数，分别为crc4-ITU、crc6-ITU、crc8-ROHC.
 
@@ -114,6 +114,7 @@ Sender处的主要逻辑如下：
 
 
 ````
+//移动窗口并发包
 void Sender_moveWindow() {
   while (Sender_nextseqnum < send_base + WINDOW_SIZE &&
          Sender_nextseqnum <= total_packet_num) {
@@ -131,7 +132,7 @@ void Sender_FromUpperLayer(struct message *msg) {
     u_int16_t sequence_num = total_packet_num + 1;//计算sequencenum
     (pkt->data)[0] = maxpayload_size;//包的第一位为包中data的长度
     *(u_int16_t *)(pkt->data + 1) = sequence_num;//包的第2-3位为sequencenum
-    memcpy(pkt->data + HEADER_SIZE, msg->data + cursor, maxpayload_size);
+    memcpy...
     addChecksum(pkt);//计算crc checksum并填在包的最后三位
     packet_buffer[sequence_num] = pkt;//将包存储在buffer中
     cursor += maxpayload_size;
@@ -142,12 +143,12 @@ void Sender_FromUpperLayer(struct message *msg) {
     //略
   }
   //发送第一个滑动窗口并开启计时器
-  Sender_StartTimer(TIMEOUT);
   Sender_moveWindow();
+  Sender_StartTimer(TIMEOUT);
 }
 ````
 
-如果Sender收到ACK则将滑动窗口向前移动，并在buffer中删除ACK的sequence之前的包（节约内存），如果所有packet均发送完成则关闭计时器，否则重置解释器.
+如果Sender收到ACK则将滑动窗口向前移动，并在buffer中删除ACK的sequence之前的包以节约内存，如果所有packet均发送完成则关闭计时器，否则重置计时器.
 
 ````
 void Sender_FromLowerLayer(struct packet *pkt) {
@@ -161,7 +162,7 @@ void Sender_FromLowerLayer(struct packet *pkt) {
   if (send_base == Sender_nextseqnum)
     Sender_StopTimer();
   else
-    Sender_StartTimer(TIMEOUT);//否则重置解释器
+    Sender_StartTimer(TIMEOUT);//否则重置计时器
 }
 ````
 如果计时器超时则需要重发Sender_nextseqnum之前没有收到ACK的包（即send_base之后nextseqnum之前的包），并重置计时器.
