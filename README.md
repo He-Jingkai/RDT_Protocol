@@ -3,12 +3,27 @@
 ## 目录
 - [RDT_Protocol](#rdt_protocol)
   - [目录](#目录)
+  - [说明](#说明)
   - [Packet结构](#packet结构)
   - [CRC循环检验和](#crc循环检验和)
   - [RDT原理概述](#rdt原理概述)
     - [Sender](#sender)
     - [Receiver](#receiver)
   - [测试结果](#测试结果)
+
+## 说明
+提交代码结构：
+
+````
+  rdt_______Makefile(changed)
+          |_crc.{h,cc}(crc functions)
+          |_rdt_receiver.{h,cc}(.cc changed)
+          |_rdt_sender.{h,cc}(.cc changed)
+          |_rdt_struct.h        
+          |_rdt_sim.cc        
+````
+
+和敬凯 519021910187 hjk020101@sjtu.edu.cn
 
 ## Packet结构
 
