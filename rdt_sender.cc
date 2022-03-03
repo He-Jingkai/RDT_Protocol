@@ -15,7 +15,7 @@
 #include "crc.h"
 #include "rdt_struct.h"
 
-#define WINDOW_SIZE 5
+#define WINDOW_SIZE 10
 #define CHECKSUM_SIZE 3
 #define TIMEOUT 0.3
 int HEADER_SIZE = 3;
