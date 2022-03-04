@@ -19,10 +19,10 @@
 #define CHECKSUM_SIZE 3
 #define TIMEOUT 0.3
 int HEADER_SIZE = 3;
-u_int16_t Sender_nextseqnum = 1;
-u_int16_t send_base = 1;
-u_int16_t total_packet_num = 0;
-std::map<u_int16_t, packet *> packet_buffer;
+uint16_t Sender_nextseqnum = 1;
+uint16_t send_base = 1;
+uint16_t total_packet_num = 0;
+std::map<uint16_t, packet *> packet_buffer;
 
 void Sender_StartTimer(double timeout);
 void Sender_StopTimer();
@@ -72,15 +72,15 @@ void Sender_Final() {
    sender */
 void Sender_FromUpperLayer(struct message *msg) {
   /* maximum payload size */
-  u_int8_t maxpayload_size = RDT_PKTSIZE - HEADER_SIZE - CHECKSUM_SIZE;
+  uint8_t maxpayload_size = RDT_PKTSIZE - HEADER_SIZE - CHECKSUM_SIZE;
 
   /* the cursor always points to the first unsent byte in the message */
   int cursor = 0;
   while (msg->size - cursor > maxpayload_size) {
     packet *pkt = new packet;
-    u_int16_t sequence_num = total_packet_num + 1;
+    uint16_t sequence_num = total_packet_num + 1;
     (pkt->data)[0] = maxpayload_size;
-    *(u_int16_t *)(pkt->data + 1) = sequence_num;
+    *(uint16_t *)(pkt->data + 1) = sequence_num;
     memcpy(pkt->data + HEADER_SIZE, msg->data + cursor, maxpayload_size);
     addChecksum(pkt);
     packet_buffer[sequence_num] = pkt;
@@ -90,9 +90,9 @@ void Sender_FromUpperLayer(struct message *msg) {
 
   if (msg->size > cursor) {
     packet *pkt = new packet;
-    u_int16_t sequence_num = total_packet_num + 1;
+    uint16_t sequence_num = total_packet_num + 1;
     pkt->data[0] = msg->size - cursor;
-    *(u_int16_t *)(pkt->data + 1) = sequence_num;
+    *(uint16_t *)(pkt->data + 1) = sequence_num;
     memcpy(pkt->data + HEADER_SIZE, msg->data + cursor, pkt->data[0]);
     addChecksum(pkt);
     packet_buffer[sequence_num] = pkt;
@@ -110,7 +110,7 @@ void Sender_FromUpperLayer(struct message *msg) {
 void Sender_FromLowerLayer(struct packet *pkt) {
   /*Check Corruption*/
   if (crc::crc8_rohc(pkt->data, 4) || crc::crc4_itu(pkt->data, 3)) return;
-  u_int16_t ack_sequence_num = *(u_int16_t *)(pkt->data);
+  uint16_t ack_sequence_num = *(uint16_t *)(pkt->data);
 #ifdef DEBUG
   fprintf(stdout, "[sender]receive ack of %d\n", ack_sequence_num);
 #endif
@@ -126,6 +126,6 @@ void Sender_FromLowerLayer(struct packet *pkt) {
 void Sender_Timeout() {
   Sender_StartTimer(TIMEOUT);
   // send_base(included) to nextseqnum-1(included)
-  for (u_int16_t i = send_base; i <= Sender_nextseqnum - 1; i++)
+  for (uint16_t i = send_base; i <= Sender_nextseqnum - 1; i++)
     Sender_ToLowerLayer(packet_buffer[i]);
 }

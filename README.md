@@ -20,11 +20,13 @@
           |_rdt_receiver.{h,cc}(.cc changed)
           |_rdt_sender.{h,cc}(.cc changed)
           |_rdt_struct.h        
-          |_rdt_sim.cc        
+          |_rdt_sim.cc
+          |_markdownpic        
 ````
 
 和敬凯 519021910187 hjk020101@sjtu.edu.cn
 
+编译环境: Ubuntu 20.04.3 LTS + gcc 9.3.0
 ## Packet结构
 
 rdt中表示包的数据结构为````struct packet````, 是一个固定长度的字符数组.
@@ -235,34 +237,7 @@ void Receiver_FromLowerLayer(struct packet *pkt) {
 ````
 
 ## 测试结果
-````./rdt_sim 1000 0.1 100 0.15 0.15 0.15 0````的测试结果如下：
+每次测试结果有差异
 
-
-````
-At 0.00s: sender initializing ...
-At 0.00s: receiver initializing ...
-At 2391.19s: sender finalizing ...
-At 2391.19s: receiver finalizing ...
-
-Simulation completed at time 2391.19s with
-        1007524 characters sent
-        1007524 characters delivered
-        60296 packets passed between the sender and the receiver
-Congratulations! This session is error-free, loss-free, and in order.
-````
-
-````./rdt_sim 1000 0.1 100 0.3 0.3 0.3 0````的测试结果如下：
-
-
-````
-At 0.00s: sender initializing ...
-At 0.00s: receiver initializing ...
-At 3276.06s: sender finalizing ...
-At 3276.06s: receiver finalizing ...
-
-Simulation completed at time 3276.06s with
-        1002493 characters sent
-        1002493 characters delivered
-        87114 packets passed between the sender and the receiver
-Congratulations! This session is error-free, loss-free, and in order.
-````
+![avatar](/markdownpic/pic-1.png)
+![avatar](/markdownpic/pic-2.png)

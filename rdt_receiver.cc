@@ -15,23 +15,23 @@
 #include "rdt_struct.h"
 
 extern int HEADER_SIZE;
-std::map<u_int16_t, message *> Receiver_packet_buffer;
+std::map<uint16_t, message *> Receiver_packet_buffer;
 
 void Receiver_ToLowerLayer(struct packet *pkt);
 
-u_int16_t Receiver_nextseqnum = 1;
+uint16_t Receiver_nextseqnum = 1;
 
 void Receiver_ToUpperLayer_rewrite(struct message *msg) {
   Receiver_ToUpperLayer(msg);
   if (msg->data != NULL) free(msg->data);
   if (msg != NULL) free(msg);
 }
-void ACK(u_int16_t seqnum) {
+void ACK(uint16_t seqnum) {
 #ifdef DEBUG
   fprintf(stdout, "[receiver]send ack of %d\n", seqnum);
 #endif
   struct packet *pkt = new packet;
-  *(u_int16_t *)pkt->data = seqnum;
+  *(uint16_t *)pkt->data = seqnum;
   pkt->data[2] = crc::crc4_itu(pkt->data, 2);
   pkt->data[3] = crc::crc8_rohc(pkt->data, 3);
   Receiver_ToLowerLayer(pkt);
@@ -55,16 +55,16 @@ void Receiver_Final() {
 void Receiver_FromLowerLayer(struct packet *pkt) {
   if (crc::crc4_itu(pkt->data, RDT_PKTSIZE) ||
       crc::crc8_rohc(pkt->data, RDT_PKTSIZE - 1) ||
-      crc::crc6_itu(pkt->data, RDT_PKTSIZE - 2) || (u_int8_t)pkt->data[0] < 1 ||
-      (u_int8_t)pkt->data[0] > RDT_PKTSIZE - HEADER_SIZE) {
+      crc::crc6_itu(pkt->data, RDT_PKTSIZE - 2) || (uint8_t)pkt->data[0] < 1 ||
+      (uint8_t)pkt->data[0] > RDT_PKTSIZE - HEADER_SIZE) {
     ACK(Receiver_nextseqnum - 1);
     return;
   }
 
   /* construct a message and deliver to the upper layer */
   struct message *msg = (struct message *)malloc(sizeof(struct message));
-  msg->size = (u_int8_t)pkt->data[0];
-  u_int16_t sequence_num = *(u_int16_t *)(pkt->data + 1);
+  msg->size = (uint8_t)pkt->data[0];
+  uint16_t sequence_num = *(uint16_t *)(pkt->data + 1);
 
 #ifdef DEBUG
   fprintf(stdout, "[receiver]receive packet of %d\n", sequence_num);
